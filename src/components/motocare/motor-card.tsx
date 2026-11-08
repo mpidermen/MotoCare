@@ -37,7 +37,10 @@ export function MotorCard({ motor, pengingat, statusKeseluruhan, onEdit }: Motor
       <View style={styles.baris}>
         <View style={styles.kolomKiri}>
           <View style={styles.merekBaris}>
-            <Text style={styles.merek}>{motor.merek.toUpperCase()}</Text>
+            <Text style={styles.merek}>
+              {motor.merek.toUpperCase()}
+              {motor.model ? ` · ${motor.model.toUpperCase()}` : ''}
+            </Text>
             <Pressable
               onPress={onEdit}
               hitSlop={10}

@@ -8,6 +8,7 @@ export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 export interface Motor {
   nama: string;
   merek: string;
+  model?: string; // Modul 3: opsional, diketik pengguna (contoh: "Vario 150")
   kilometerSaatIni: number;
 }
 
@@ -123,20 +124,18 @@ export function tanggalHariIni(): string {
   return `${sekarang.getFullYear()}-${bulan}-${hari}`;
 }
 
-// Servis dengan tanggal paling baru (kalau tanggal sama, ambil kilometer terbesar)
+// Servis dengan tanggal paling baru (kalau tanggal sama, ambil yang paling akhir diinput = id terbesar).
+// Tanggal servis diisi otomatis hari ini, jadi servis yang diinput di hari yang sama punya tanggal sama.
 export function cariServisTerakhir(riwayat: RiwayatServis[]): RiwayatServis | null {
   if (riwayat.length === 0) return null;
-  return [...riwayat].sort((a, b) => {
-    if (a.tanggal !== b.tanggal) return b.tanggal.localeCompare(a.tanggal);
-    return b.kilometer - a.kilometer;
-  })[0];
+  return urutkanRiwayat(riwayat)[0];
 }
 
-// Riwayat diurutkan dari yang terbaru
+// Riwayat diurutkan dari yang terbaru (tanggal sama -> yang paling akhir diinput di atas)
 export function urutkanRiwayat(riwayat: RiwayatServis[]): RiwayatServis[] {
   return [...riwayat].sort((a, b) => {
     if (a.tanggal !== b.tanggal) return b.tanggal.localeCompare(a.tanggal);
-    return b.kilometer - a.kilometer;
+    return b.id - a.id;
   });
 }
 
