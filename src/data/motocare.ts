@@ -47,7 +47,7 @@ export interface Pengingat {
 export const dataMotor: Motor = {
   nama: 'Honda Vario 150',
   merek: 'Honda',
-  kilometerSaatIni: 0,
+  kilometerSaatIni: 10500,
 };
 
 export const aturanServis: AturanServis[] = [
