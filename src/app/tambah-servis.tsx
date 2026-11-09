@@ -3,20 +3,26 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MotoColors } from '@/constants/motocare-theme';
+import { MotoColors, StatusColors } from '@/constants/motocare-theme';
 import { useMotoCare } from '@/context/motocare-context';
 import { aturanServis, formatKm, tanggalHariIni } from '@/data/motocare';
 
 // Halaman /tambah-servis (tampil sebagai modal). Bisa dibuka dengan /tambah-servis?jenis=...
 export default function TambahServisScreen() {
   const insets = useSafeAreaInsets();
-  const { motor, tambahServis } = useMotoCare();
+  const { motor, riwayat, tambahServis } = useMotoCare();
   const { jenis: jenisDariRoute } = useLocalSearchParams<{ jenis?: string }>();
 
   // useState: nilai yang sedang diisi pengguna di form
   const [jenis, setJenis] = useState<string>(aturanServis[0].jenis);
   const [kilometer, setKilometer] = useState('');
   const [catatan, setCatatan] = useState('');
+
+  // Kilometer servis tertinggi untuk JENIS yang sedang dipilih (0 = jenis ini belum pernah dicatat).
+  // Servis baru jenis ini tidak boleh di bawah angka tersebut. Berubah otomatis saat jenis diganti.
+  const kmTerakhirJenis = riwayat
+    .filter((r) => r.jenis === jenis)
+    .reduce((maks, r) => Math.max(maks, r.kilometer), 0);
 
   // useEffect: setiap parameter jenis dari route berubah, pilih jenis tersebut di form
   useEffect(() => {
@@ -25,19 +31,37 @@ export default function TambahServisScreen() {
     }
   }, [jenisDariRoute]);
 
+  // Pesan error yang tampil di layar. Alert.alert tidak muncul di web, jadi pesannya juga ditulis di halaman.
+  const [pesanError, setPesanError] = useState('');
+
+  const tampilkanError = (judul: string, pesan: string) => {
+    setPesanError(`${judul}: ${pesan}`);
+    Alert.alert(judul, pesan);
+  };
+
   const simpan = () => {
+    setPesanError('');
+
     // Kalau kolom kilometer dikosongkan, pakai kilometer motor saat ini
     const angka =
       kilometer.trim() === '' ? motor.kilometerSaatIni : Number(kilometer.replace(/\D/g, ''));
 
     if (Number.isNaN(angka) || angka <= 0) {
-      Alert.alert('Kilometer tidak valid', 'Masukkan angka kilometer yang benar.');
+      tampilkanError('Kilometer tidak valid', 'Masukkan angka kilometer yang benar.');
       return;
     }
     if (angka > motor.kilometerSaatIni) {
-      Alert.alert(
+      tampilkanError(
         'Kilometer terlalu besar',
         `Kilometer servis tidak boleh melebihi kilometer saat ini (${formatKm(motor.kilometerSaatIni)} km). Perbarui kilometer terlebih dahulu.`,
+      );
+      return;
+    }
+
+    if (angka < kmTerakhirJenis) {
+      tampilkanError(
+        'Kilometer terlalu kecil',
+        `${jenis} terakhir tercatat di ${formatKm(kmTerakhirJenis)} km, jadi kilometer servis baru tidak boleh lebih kecil dari itu.`,
       );
       return;
     }
@@ -85,7 +109,18 @@ export default function TambahServisScreen() {
         style={styles.input}
       />
 
-      <Text style={styles.info}>Tanggal servis otomatis diisi hari ini.</Text>
+      <Text style={styles.info}>
+        {kmTerakhirJenis > 0
+          ? `Isi antara ${formatKm(kmTerakhirJenis)} km (${jenis} terakhir) dan ${formatKm(motor.kilometerSaatIni)} km (kilometer saat ini). `
+          : ''}
+        Tanggal servis otomatis diisi hari ini.
+      </Text>
+
+      {pesanError !== '' && (
+        <View style={styles.kotakError}>
+          <Text style={styles.kotakErrorText}>{pesanError}</Text>
+        </View>
+      )}
 
       <Pressable style={styles.tombol} onPress={simpan}>
         <Text style={styles.tombolText}>Simpan Servis</Text>
@@ -146,6 +181,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: MotoColors.text,
+  },
+  kotakError: {
+    backgroundColor: StatusColors.perlu.bg,
+    borderRadius: 14,
+    padding: 14,
+  },
+  kotakErrorText: {
+    color: StatusColors.perlu.fg,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   info: {
     fontSize: 13,

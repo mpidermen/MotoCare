@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { SheetModal } from '@/components/motocare/sheet-modal';
-import { MotoColors } from '@/constants/motocare-theme';
+import { MotoColors, StatusColors } from '@/constants/motocare-theme';
 import { formatKm } from '@/data/motocare';
 
 type UpdateKmModalProps = {
@@ -15,15 +15,24 @@ type UpdateKmModalProps = {
 export function UpdateKmModal({ visible, kilometerSaatIni, onClose, onSimpan }: UpdateKmModalProps) {
   const [input, setInput] = useState('');
 
+  // Pesan error yang tampil di layar. Alert.alert tidak muncul di web, jadi pesannya juga ditulis di panel.
+  const [pesanError, setPesanError] = useState('');
+
+  const tampilkanError = (judul: string, pesan: string) => {
+    setPesanError(`${judul}: ${pesan}`);
+    Alert.alert(judul, pesan);
+  };
+
   const simpan = () => {
+    setPesanError('');
     const angka = Number(input.replace(/\D/g, ''));
 
     if (input.trim() === '' || Number.isNaN(angka)) {
-      Alert.alert('Kilometer tidak valid', 'Masukkan angka kilometer yang benar.');
+      tampilkanError('Kilometer tidak valid', 'Masukkan angka kilometer yang benar.');
       return;
     }
     if (angka < kilometerSaatIni) {
-      Alert.alert(
+      tampilkanError(
         'Kilometer terlalu kecil',
         `Kilometer baru tidak boleh lebih kecil dari ${formatKm(kilometerSaatIni)} km.`,
       );
@@ -36,6 +45,7 @@ export function UpdateKmModal({ visible, kilometerSaatIni, onClose, onSimpan }: 
 
   const tutup = () => {
     setInput('');
+    setPesanError('');
     onClose();
   };
 
@@ -50,6 +60,11 @@ export function UpdateKmModal({ visible, kilometerSaatIni, onClose, onSimpan }: 
         keyboardType="numeric"
         style={styles.input}
       />
+      {pesanError !== '' && (
+        <View style={styles.kotakError}>
+          <Text style={styles.kotakErrorText}>{pesanError}</Text>
+        </View>
+      )}
       <Pressable style={styles.tombol} onPress={simpan}>
         <Text style={styles.tombolText}>Simpan Kilometer</Text>
       </Pressable>
@@ -71,6 +86,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 18,
     color: MotoColors.text,
+  },
+  kotakError: {
+    backgroundColor: StatusColors.perlu.bg,
+    borderRadius: 14,
+    padding: 14,
+  },
+  kotakErrorText: {
+    color: StatusColors.perlu.fg,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   tombol: {
     backgroundColor: MotoColors.accent,
