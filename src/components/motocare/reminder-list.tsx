@@ -36,6 +36,11 @@ export function ReminderList({ pengingat, onPilih }: ReminderListProps) {
               </View>
               <View style={styles.teks}>
                 <Text style={styles.jenis}>{p.jenis}</Text>
+                {p.servisTerakhirKm !== null && (
+                  <Text style={styles.terakhir}>
+                    Terakhir servis di {formatKm(p.servisTerakhirKm)} km
+                  </Text>
+                )}
                 <Text style={styles.detail}>{teksSisa(p)}</Text>
               </View>
             </View>
@@ -91,6 +96,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: MotoColors.text,
+  },
+  terakhir: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: MotoColors.text,
+    marginTop: 2,
   },
   detail: {
     fontSize: 14,
