@@ -42,5 +42,4 @@ example
 /ios
 /android
 
-# local env (berisi kunci Supabase)
 .env
