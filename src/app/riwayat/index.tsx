@@ -5,17 +5,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ServiceHistory } from '@/components/motocare/service-history';
 import { MotoColors } from '@/constants/motocare-theme';
 import { useMotoCare } from '@/context/motocare-context';
-import { aturanServis, urutkanRiwayat } from '@/data/motocare';
+import { urutkanRiwayat } from '@/data/motocare';
 
 // Halaman /riwayat : daftar semua riwayat servis dengan filter jenis servis
 export default function RiwayatScreen() {
   const insets = useSafeAreaInsets();
-  const { riwayat } = useMotoCare();
+  const { riwayat, aturan } = useMotoCare();
 
   // Filter disimpan di parameter route (/riwayat?jenis=...), bukan di state
   const { jenis } = useLocalSearchParams<{ jenis?: string }>();
 
-  const daftarFilter = ['Semua', ...aturanServis.map((a) => a.jenis)];
+  const daftarFilter = ['Semua', ...aturan.map((a) => a.jenis)];
   const riwayatUrut = urutkanRiwayat(riwayat);
   const riwayatTampil = jenis ? riwayatUrut.filter((r) => r.jenis === jenis) : riwayatUrut;
 

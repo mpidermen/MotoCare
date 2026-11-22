@@ -1,20 +1,30 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MotoColors, StatusColors } from '@/constants/motocare-theme';
 import { useMotoCare } from '@/context/motocare-context';
-import { aturanServis, formatKm, tanggalHariIni } from '@/data/motocare';
+import { formatKm, tanggalHariIni } from '@/data/motocare';
 
 // Halaman /tambah-servis (tampil sebagai modal). Bisa dibuka dengan /tambah-servis?jenis=...
 export default function TambahServisScreen() {
   const insets = useSafeAreaInsets();
-  const { motor, riwayat, tambahServis } = useMotoCare();
+  const { motor, riwayat, aturan, tambahServis } = useMotoCare();
   const { jenis: jenisDariRoute } = useLocalSearchParams<{ jenis?: string }>();
 
   // useState: nilai yang sedang diisi pengguna di form
-  const [jenis, setJenis] = useState<string>(aturanServis[0].jenis);
+  const [jenis, setJenis] = useState<string>(aturan[0]?.jenis ?? '');
+  const [loading, setLoading] = useState(false);
   const [kilometer, setKilometer] = useState('');
   const [catatan, setCatatan] = useState('');
 
@@ -26,10 +36,10 @@ export default function TambahServisScreen() {
 
   // useEffect: setiap parameter jenis dari route berubah, pilih jenis tersebut di form
   useEffect(() => {
-    if (jenisDariRoute && aturanServis.some((a) => a.jenis === jenisDariRoute)) {
+    if (jenisDariRoute && aturan.some((a) => a.jenis === jenisDariRoute)) {
       setJenis(jenisDariRoute);
     }
-  }, [jenisDariRoute]);
+  }, [jenisDariRoute, aturan]);
 
   // Pesan error yang tampil di layar. Alert.alert tidak muncul di web, jadi pesannya juga ditulis di halaman.
   const [pesanError, setPesanError] = useState('');
@@ -39,7 +49,8 @@ export default function TambahServisScreen() {
     Alert.alert(judul, pesan);
   };
 
-  const simpan = () => {
+  const simpan = async () => {
+    if (loading) return; // cegah klik ganda
     setPesanError('');
 
     // Kalau kolom kilometer dikosongkan, pakai kilometer motor saat ini
@@ -66,8 +77,15 @@ export default function TambahServisScreen() {
       return;
     }
 
-    tambahServis({ jenis, tanggal: tanggalHariIni(), kilometer: angka, catatan: catatan.trim() });
-    router.back(); // tutup halaman ini dan kembali ke halaman sebelumnya
+    setLoading(true);
+    try {
+      // Tampilan diperbarui langsung (optimistic), lalu dikirim ke Supabase. Gagal = otomatis dibatalkan.
+      await tambahServis({ jenis, tanggal: tanggalHariIni(), kilometer: angka, catatan: catatan.trim() });
+      router.back(); // tutup halaman ini dan kembali ke halaman sebelumnya
+    } catch (e) {
+      setPesanError(e instanceof Error ? e.message : 'Gagal menyimpan servis.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,14 +95,14 @@ export default function TambahServisScreen() {
       contentContainerStyle={[styles.konten, { paddingBottom: insets.bottom + 24 }]}>
       <Text style={styles.label}>Jenis servis</Text>
       <View style={styles.chipBaris}>
-        {aturanServis.map((aturan) => {
-          const aktif = aturan.jenis === jenis;
+        {aturan.map((item) => {
+          const aktif = item.jenis === jenis;
           return (
             <Pressable
-              key={aturan.jenis}
-              onPress={() => setJenis(aturan.jenis)}
+              key={item.jenis}
+              onPress={() => setJenis(item.jenis)}
               style={[styles.chip, aktif && styles.chipAktif]}>
-              <Text style={[styles.chipText, aktif && styles.chipTextAktif]}>{aturan.jenis}</Text>
+              <Text style={[styles.chipText, aktif && styles.chipTextAktif]}>{item.jenis}</Text>
             </Pressable>
           );
         })}
@@ -122,8 +140,15 @@ export default function TambahServisScreen() {
         </View>
       )}
 
-      <Pressable style={styles.tombol} onPress={simpan}>
-        <Text style={styles.tombolText}>Simpan Servis</Text>
+      <Pressable
+        style={[styles.tombol, loading && { opacity: 0.6 }]}
+        onPress={simpan}
+        disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color={MotoColors.onNavy} />
+        ) : (
+          <Text style={styles.tombolText}>Simpan Servis</Text>
+        )}
       </Pressable>
       <Pressable style={styles.tombolSekunder} onPress={() => router.back()}>
         <Text style={styles.tombolSekunderText}>Batal</Text>
