@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { SheetModal } from '@/components/motocare/sheet-modal';
 import { MotoColors, StatusColors } from '@/constants/motocare-theme';
@@ -9,11 +9,12 @@ type UpdateKmModalProps = {
   visible: boolean;
   kilometerSaatIni: number;
   onClose: () => void;
-  onSimpan: (kilometerBaru: number) => void;
+  onSimpan: (kilometerBaru: number) => Promise<void>;
 };
 
 export function UpdateKmModal({ visible, kilometerSaatIni, onClose, onSimpan }: UpdateKmModalProps) {
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Pesan error yang tampil di layar. Alert.alert tidak muncul di web, jadi pesannya juga ditulis di panel.
   const [pesanError, setPesanError] = useState('');
@@ -23,7 +24,8 @@ export function UpdateKmModal({ visible, kilometerSaatIni, onClose, onSimpan }: 
     Alert.alert(judul, pesan);
   };
 
-  const simpan = () => {
+  const simpan = async () => {
+    if (loading) return; // cegah klik ganda
     setPesanError('');
     const angka = Number(input.replace(/\D/g, ''));
 
@@ -39,8 +41,15 @@ export function UpdateKmModal({ visible, kilometerSaatIni, onClose, onSimpan }: 
       return;
     }
 
-    onSimpan(angka);
-    setInput('');
+    setLoading(true);
+    try {
+      await onSimpan(angka);
+      setInput('');
+    } catch (e) {
+      setPesanError(e instanceof Error ? e.message : 'Gagal memperbarui kilometer.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const tutup = () => {
@@ -65,8 +74,15 @@ export function UpdateKmModal({ visible, kilometerSaatIni, onClose, onSimpan }: 
           <Text style={styles.kotakErrorText}>{pesanError}</Text>
         </View>
       )}
-      <Pressable style={styles.tombol} onPress={simpan}>
-        <Text style={styles.tombolText}>Simpan Kilometer</Text>
+      <Pressable
+        style={[styles.tombol, loading && { opacity: 0.6 }]}
+        onPress={simpan}
+        disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color={MotoColors.onNavy} />
+        ) : (
+          <Text style={styles.tombolText}>Simpan Kilometer</Text>
+        )}
       </Pressable>
     </SheetModal>
   );

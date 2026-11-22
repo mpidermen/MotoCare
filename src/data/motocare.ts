@@ -6,6 +6,7 @@ import type { MaterialCommunityIcons } from '@expo/vector-icons';
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 export interface Motor {
+  id: string; // Modul 4: id dari database Supabase (uuid)
   nama: string;
   merek: string;
   model?: string; // Modul 3: opsional, diketik pengguna (contoh: "Vario 150")
@@ -14,11 +15,16 @@ export interface Motor {
 
 export interface RiwayatServis {
   id: number;
+  motorId: string; // Modul 4: servis ini milik motor yang mana
   jenis: string;
   tanggal: string; // format 'YYYY-MM-DD'
   kilometer: number;
   catatan: string;
 }
+
+// Data yang diisi pengguna di form (id dan motorId dibuat oleh sistem)
+export type DataMotor = Omit<Motor, 'id'>;
+export type DataServis = Omit<RiwayatServis, 'id' | 'motorId'>;
 
 // Aturan interval: tiap jenis servis diulang setiap sekian kilometer
 export interface AturanServis {
@@ -40,59 +46,16 @@ export interface Pengingat {
   status: StatusServis;
 }
 
-// ---------- DATA CONTOH ----------
-// Data di bawah ini hanya contoh. Ganti dengan data motor & riwayat milik kelompok.
-// Nilai intervalKm juga contoh; sesuaikan dengan buku manual motor.
-
-export const dataMotor: Motor = {
-  nama: 'Honda Vario 150',
-  merek: 'Honda',
-  kilometerSaatIni: 10500,
-};
+// ---------- ATURAN BAWAAN ----------
+// Daftar jenis servis + ikonnya. Nilai intervalKm di sini adalah nilai bawaan (sama dengan yang
+// diisi otomatis ke tabel aturan_servis di Supabase saat akun dibuat). Data motor dan riwayat
+// servis TIDAK lagi ditulis di sini: semuanya diambil dari Supabase.
 
 export const aturanServis: AturanServis[] = [
   { jenis: 'Ganti Oli Mesin', intervalKm: 3000, ikon: 'oil' },
   { jenis: 'Ganti Oli Gardan', intervalKm: 8000, ikon: 'cog' },
   { jenis: 'Servis CVT', intervalKm: 8000, ikon: 'engine' },
   { jenis: 'Ganti Busi', intervalKm: 12000, ikon: 'flash' },
-];
-
-export const dataRiwayat: RiwayatServis[] = [
-  {
-    id: 1,
-    jenis: 'Ganti Oli Mesin',
-    tanggal: '2026-08-22',
-    kilometer: 9800,
-    catatan: 'Oli 0,8 liter, filter oli dibersihkan.',
-  },
-  {
-    id: 2,
-    jenis: 'Ganti Oli Mesin',
-    tanggal: '2026-05-10',
-    kilometer: 6700,
-    catatan: 'Servis rutin di bengkel resmi.',
-  },
-  {
-    id: 3,
-    jenis: 'Servis CVT',
-    tanggal: '2026-05-10',
-    kilometer: 6700,
-    catatan: 'Bersihkan CVT, cek roller dan belt.',
-  },
-  {
-    id: 4,
-    jenis: 'Ganti Oli Gardan',
-    tanggal: '2026-02-14',
-    kilometer: 4200,
-    catatan: 'Ganti oli gardan 100 ml.',
-  },
-  {
-    id: 5,
-    jenis: 'Ganti Busi',
-    tanggal: '2026-02-14',
-    kilometer: 4200,
-    catatan: 'Busi lama sudah aus.',
-  },
 ];
 
 // ---------- Fungsi bantuan ----------
@@ -152,8 +115,12 @@ export function cariIkon(jenis: string): IconName {
 
 // Hitung pengingat untuk setiap aturan berdasarkan kilometer saat ini dan riwayat.
 // Status dihitung dari data, bukan angka acak.
-export function hitungPengingat(kilometerSaatIni: number, riwayat: RiwayatServis[]): Pengingat[] {
-  return aturanServis.map((aturan) => {
+export function hitungPengingat(
+  kilometerSaatIni: number,
+  riwayat: RiwayatServis[],
+  daftarAturan: AturanServis[] = aturanServis,
+): Pengingat[] {
+  return daftarAturan.map((aturan) => {
     const servisJenisIni = riwayat.filter((r) => r.jenis === aturan.jenis);
 
     // Belum pernah tercatat -> tidak bisa menghitung target

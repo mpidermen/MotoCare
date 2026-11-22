@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CardShadow, MotoColors } from '@/constants/motocare-theme';
+import { CardShadow, MotoColors, StatusColors } from '@/constants/motocare-theme';
 import { useMotoCare } from '@/context/motocare-context';
 import { cariIkon, formatKm, formatTanggal, hitungJarakSejakServis } from '@/data/motocare';
 
@@ -11,7 +12,10 @@ import { cariIkon, formatKm, formatTanggal, hitungJarakSejakServis } from '@/dat
 export default function DetailServisScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { motor, riwayat } = useMotoCare();
+  const { motor, riwayat, hapusServis } = useMotoCare();
+  const [konfirmasiHapus, setKonfirmasiHapus] = useState(false);
+  const [menghapus, setMenghapus] = useState(false);
+  const [pesanError, setPesanError] = useState('');
 
   const servis = riwayat.find((r) => r.id === Number(id));
 
@@ -24,6 +28,33 @@ export default function DetailServisScreen() {
       router.replace('/riwayat');
     }
   };
+
+  // DELETE: perlu ditekan dua kali supaya tidak terhapus tanpa sengaja
+  const hapus = async () => {
+    if (!servis || menghapus) return;
+    if (!konfirmasiHapus) {
+      setKonfirmasiHapus(true);
+      return;
+    }
+    setMenghapus(true);
+    try {
+      await hapusServis(servis.id);
+      kembali();
+    } catch (e) {
+      setPesanError(e instanceof Error ? e.message : 'Gagal menghapus servis.');
+      setKonfirmasiHapus(false);
+      setMenghapus(false);
+    }
+  };
+
+  // Saat sedang menghapus, data sudah hilang dari daftar: tampilkan spinner (bukan "tidak ditemukan")
+  if (!servis && menghapus) {
+    return (
+      <View style={styles.kosong}>
+        <ActivityIndicator color={MotoColors.accent} />
+      </View>
+    );
+  }
 
   if (!servis) {
     return (
@@ -83,11 +114,43 @@ export default function DetailServisScreen() {
         onPress={kembali}>
         <Text style={styles.tombolSekunderText}>Kembali</Text>
       </Pressable>
+
+      {pesanError !== '' && (
+        <View style={styles.kotakError}>
+          <Text style={styles.kotakErrorText}>{pesanError}</Text>
+        </View>
+      )}
+      <Pressable style={styles.tombolHapus} onPress={hapus} disabled={menghapus}>
+        <Text style={styles.tombolHapusText}>
+          {konfirmasiHapus ? 'Tekan lagi untuk menghapus servis ini' : 'Hapus Servis'}
+        </Text>
+      </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  kotakError: {
+    backgroundColor: StatusColors.perlu.bg,
+    borderRadius: 14,
+    padding: 14,
+  },
+  kotakErrorText: {
+    color: StatusColors.perlu.fg,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tombolHapus: {
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    backgroundColor: StatusColors.perlu.bg,
+  },
+  tombolHapusText: {
+    color: StatusColors.perlu.fg,
+    fontSize: 15,
+    fontWeight: '700',
+  },
   layar: {
     flex: 1,
     backgroundColor: MotoColors.background,
