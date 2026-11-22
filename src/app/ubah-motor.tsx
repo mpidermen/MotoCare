@@ -1,6 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MerekPicker } from '@/components/motocare/merek-picker';
@@ -11,7 +20,9 @@ import { formatKm } from '@/data/motocare';
 // Halaman /ubah-motor (tampil sebagai modal): mengubah nama, merek, dan kilometer motor
 export default function UbahMotorScreen() {
   const insets = useSafeAreaInsets();
-  const { motor, riwayat, ubahMotor } = useMotoCare();
+  const { motor, riwayat, ubahMotor, hapusMotor } = useMotoCare();
+  const [loading, setLoading] = useState(false);
+  const [konfirmasiHapus, setKonfirmasiHapus] = useState(false);
 
   // useState diisi dengan data motor yang sekarang
   const [nama, setNama] = useState(motor.nama);
@@ -30,7 +41,8 @@ export default function UbahMotorScreen() {
     Alert.alert(judul, pesan);
   };
 
-  const simpan = () => {
+  const simpan = async () => {
+    if (loading) return; // cegah klik ganda
     setPesanError('');
     const angka = Number(kilometer.replace(/\D/g, ''));
 
@@ -50,8 +62,32 @@ export default function UbahMotorScreen() {
       return;
     }
 
-    ubahMotor({ nama: nama.trim(), merek: merek.trim(), model: model.trim(), kilometerSaatIni: angka });
-    router.back();
+    setLoading(true);
+    try {
+      await ubahMotor({ nama: nama.trim(), merek: merek.trim(), model: model.trim(), kilometerSaatIni: angka });
+      router.back();
+    } catch (e) {
+      setPesanError(e instanceof Error ? e.message : 'Gagal menyimpan data motor.');
+      setLoading(false);
+    }
+  };
+
+  // DELETE: perlu ditekan dua kali supaya tidak terhapus tanpa sengaja (riwayat servisnya ikut terhapus)
+  const hapus = async () => {
+    if (loading) return;
+    if (!konfirmasiHapus) {
+      setKonfirmasiHapus(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      await hapusMotor();
+      router.back();
+    } catch (e) {
+      setPesanError(e instanceof Error ? e.message : 'Gagal menghapus motor.');
+      setKonfirmasiHapus(false);
+      setLoading(false);
+    }
   };
 
   return (
@@ -105,11 +141,23 @@ export default function UbahMotorScreen() {
         </View>
       )}
 
-      <Pressable style={styles.tombol} onPress={simpan}>
-        <Text style={styles.tombolText}>Simpan Data Motor</Text>
+      <Pressable
+        style={[styles.tombol, loading && { opacity: 0.6 }]}
+        onPress={simpan}
+        disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color={MotoColors.onNavy} />
+        ) : (
+          <Text style={styles.tombolText}>Simpan Data Motor</Text>
+        )}
       </Pressable>
-      <Pressable style={styles.tombolSekunder} onPress={() => router.back()}>
+      <Pressable style={styles.tombolSekunder} onPress={() => router.back()} disabled={loading}>
         <Text style={styles.tombolSekunderText}>Batal</Text>
+      </Pressable>
+      <Pressable style={styles.tombolHapus} onPress={hapus} disabled={loading}>
+        <Text style={styles.tombolHapusText}>
+          {konfirmasiHapus ? 'Tekan lagi untuk menghapus motor dan riwayatnya' : 'Hapus Motor'}
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -169,6 +217,17 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
+  },
+  tombolHapus: {
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    backgroundColor: StatusColors.perlu.bg,
+  },
+  tombolHapusText: {
+    color: StatusColors.perlu.fg,
+    fontSize: 15,
+    fontWeight: '700',
   },
   tombolSekunderText: {
     color: MotoColors.accent,
